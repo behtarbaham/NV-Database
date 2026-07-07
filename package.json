@@ -1,0 +1,91 @@
+{
+  "name": "navand-course-manager",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "npm run dev:frontend",
+    "dev:frontend": "vite --config frontend/vite.config.ts",
+    "dev:backend": "node --watch backend/server.js",
+    "dev:electron": "concurrently \"npm:dev:frontend\" \"wait-on http://127.0.0.1:3000 && node scripts/run-electron.mjs .\"",
+    "start": "node scripts/run-electron.mjs .",
+    "build": "vite build --config frontend/vite.config.ts",
+    "dist": "npm run build && electron-builder --win nsis --x64",
+    "pack": "npm run build && electron-builder --win dir --x64",
+    "portable": "node scripts/build-portable.mjs",
+    "preview": "vite preview --config frontend/vite.config.ts",
+    "lint": "tsc --noEmit",
+    "rebuild:electron": "node scripts/rebuild-electron.mjs",
+    "postinstall": "node scripts/rebuild-electron.mjs",
+    "migrate": "node database/migrate-from-mysql.js",
+    "start:prod": "node scripts/start-prod.mjs",
+    "backup": "electron -e \"import('./services/backupService.js').then(m=>console.log(m.backupDatabase()))\""
+  },
+  "build": {
+    "appId": "com.navand.coursemanager",
+    "productName": "Navand Course Manager",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "config/**/*",
+      "controllers/**/*",
+      "database/sqlite.js",
+      "models/**/*",
+      "services/**/*",
+      "utils/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/build/Release/*.node"
+    ],
+    "npmRebuild": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Navand Course Manager"
+    }
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "axios": "^1.18.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "lucide-react": "^0.546.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "vite": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "wait-on": "^9.0.3"
+  }
+}

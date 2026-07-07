@@ -1,0 +1,45 @@
+{
+    "compilerOptions":  {
+                            "target":  "ES2022",
+                            "experimentalDecorators":  true,
+                            "useDefineForClassFields":  false,
+                            "module":  "ESNext",
+                            "lib":  [
+                                        "ES2022",
+                                        "DOM",
+                                        "DOM.Iterable"
+                                    ],
+                            "skipLibCheck":  true,
+                            "moduleResolution":  "bundler",
+                            "isolatedModules":  true,
+                            "moduleDetection":  "force",
+                            "allowJs":  true,
+                            "jsx":  "react-jsx",
+                            "paths":  {
+                                          "@/*":  [
+                                                      "./frontend/src/*"
+                                                  ]
+                                      },
+                            "allowImportingTsExtensions":  true,
+                            "noEmit":  true,
+                            "types":  [
+                                          "vite/client"
+                                      ]
+                        },
+    "include":  [
+                    "frontend/src/**/*",
+                    "frontend/src/global.d.ts"
+                ],
+    "exclude":  [
+                    "node_modules",
+                    "backend",
+                    "electron",
+                    "services",
+                    "controllers",
+                    "models",
+                    "database",
+                    "utils",
+                    "dist",
+                    "src"
+                ]
+}

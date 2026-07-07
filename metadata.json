@@ -1,0 +1,6 @@
+{
+  "name": "آکادمی ناوند",
+  "description": "سیستم مدیریت مدرن و یکپارچه آکادمی آموزشی ناوند شامل مدیریت دانش‌آموزان، آموزگاران، دوره‌ها، پرداخت‌ها و گزارش‌های تحلیلی.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
