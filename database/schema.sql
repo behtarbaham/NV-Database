@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS students (
   course_id TEXT NOT NULL,
   join_date TEXT NOT NULL,
   fee_paid REAL NOT NULL DEFAULT 0,
+  monthly_fee REAL NOT NULL DEFAULT 0,
+  last_payment_date TEXT NOT NULL DEFAULT '',
+  next_payment_date TEXT NOT NULL DEFAULT '',
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -103,4 +106,19 @@ CREATE TABLE IF NOT EXISTS exam_results (
   description TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE IF NOT EXISTS classrooms (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS timetable_entries (
+  id TEXT PRIMARY KEY NOT NULL,
+  teacher_id TEXT NOT NULL REFERENCES teachers(id),
+  course_id TEXT NOT NULL REFERENCES courses(id),
+  room_id TEXT NOT NULL REFERENCES classrooms(id),
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  CHECK (start_time < end_time)
 );

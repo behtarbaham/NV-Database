@@ -1,0 +1,21 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const { getCurrentFuseWire, FuseV1Options } = require('@electron/fuses');
+(async () => {
+  const root = path.resolve(__dirname, '..');
+  const sourceExe = path.join(root, 'release/win-unpacked/Navand Course Manager.exe');
+  const fuse = await getCurrentFuseWire(sourceExe);
+  assert.equal(fuse[FuseV1Options.RunAsNode], 48, 'RunAsNode must be disabled');
+  const fixture = path.join(root, '.tmp/fused-startup');
+  fs.mkdirSync(fixture, { recursive: true });
+  fs.cpSync(path.join(root, 'node_modules/electron/dist'), fixture, { recursive: true, filter: (entry) => !entry.endsWith('default_app.asar') });
+  fs.copyFileSync(sourceExe, path.join(fixture, 'electron.exe'));
+  const appDir = path.join(fixture, 'resources/app');
+  fs.mkdirSync(appDir, { recursive: true });
+  fs.writeFileSync(path.join(appDir, 'package.json'), JSON.stringify({name:'startup-check', main:'main.cjs'}));
+  fs.writeFileSync(path.join(appDir, 'main.cjs'), 'require(' + JSON.stringify(path.join(root, 'scripts/check-packaged-startup.cjs')) + ');');
+  const result = path.join(root, '.tmp/startup-023/result.json');
+  if (fs.existsSync(result)) fs.unlinkSync(result);
+  console.log('RunAsNode disabled; isolated executable fixture ready.');
+})().catch(error => { console.error(error); process.exitCode=1; });

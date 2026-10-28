@@ -3,7 +3,9 @@ import cors from 'cors';
 import { config } from '../config/index.js';
 import { initializeDatabase } from '../database/sqlite.js';
 import { getHealth, getAppData, putAppData } from '../controllers/appDataController.js';
-import { createBackup, getBackups, restoreBackup } from '../controllers/backupController.js';
+import { browseBackupDirectory, createBackup, getBackupDrives, getBackups, restoreBackup } from '../controllers/backupController.js';
+import { postLogin, putCredentials } from '../controllers/authController.js';
+import { postRecoveryCode, postResetPassword, postRegisterAccount } from '../controllers/passwordRecoveryController.js';
 import { errorHandler } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
@@ -15,10 +17,17 @@ export const createServer = () => {
   app.use(express.json({ limit: '2mb' }));
 
   app.get('/api/health', getHealth);
+  app.post('/api/auth/login', postLogin);
+  app.post('/api/auth/register', postRegisterAccount);
+  app.post('/api/auth/recovery-code', postRecoveryCode);
+  app.post('/api/auth/reset-password', postResetPassword);
+  app.put('/api/auth/credentials', putCredentials);
   app.get('/api/app-data', getAppData);
   app.put('/api/app-data', putAppData);
   app.get('/api/backups', getBackups);
   app.post('/api/backups', createBackup);
+  app.get('/api/backup-drives', getBackupDrives);
+  app.post('/api/backup-browse', browseBackupDirectory);
   app.post('/api/restore', restoreBackup);
 
   app.use(errorHandler);

@@ -7,6 +7,9 @@ export interface Student {
   courseId: string;
   joinDate: string;
   feePaid: number;
+  monthlyFee?: number;
+  lastPaymentDate?: string;
+  nextPaymentDate?: string;
   isActive: boolean;
 }
 
@@ -66,6 +69,7 @@ export interface Exam {
   courseId: string;
   date: string;
   totalScore: number;
+  studentCount: number;
 }
 
 export interface ExamResult {
@@ -77,8 +81,32 @@ export interface ExamResult {
   description: string;
 }
 
+export interface AuthUser {
+  id: number;
+  username: string;
+  fullName: string;
+  role: string;
+  createdAt?: string;
+}
+
+export interface BackupEntry {
+  name: string;
+  path: string;
+  type: 'drive' | 'folder' | 'backup';
+  size?: number;
+  createdAt?: string;
+}
+
+export interface BackupDirectory {
+  currentPath: string;
+  parentPath: string | null;
+  entries: BackupEntry[];
+}
+
 export type SidebarTab =
   | 'dashboard'
+  | 'notifications'
+  | 'classes'
   | 'students'
   | 'teachers'
   | 'courses'
@@ -87,4 +115,18 @@ export type SidebarTab =
   | 'incomes'
   | 'exams'
   | 'results'
+  | 'backup'
   | 'reports';
+
+export interface Classroom {
+  id: string;
+  name: string;
+}
+export interface TimetableEntry {
+  id: string;
+  teacherId: string;
+  courseId: string;
+  roomId: string;
+  startTime: string;
+  endTime: string;
+}

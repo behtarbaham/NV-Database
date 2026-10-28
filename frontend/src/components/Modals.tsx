@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { Student, Teacher, Course, Payment, Expense, Income, Exam, ExamResult } from '../types';
+import { JalaliDateInput } from './JalaliDateInput';
+import { getCurrentAfghanMonth, formatDisplayDate, getTodayDateInputValue, toDateInputValue } from '../utils';
 
 interface EntityModalProps {
   isOpen: boolean;
@@ -20,7 +22,9 @@ interface EntityModalProps {
     | 'add_payment'
     | 'edit_payment'
     | 'add_expense'
+    | 'edit_expense'
     | 'add_income'
+    | 'edit_income'
     | 'add_exam'
     | 'add_result'
     | null;
@@ -42,31 +46,124 @@ export function EntityModal({
   onSave,
   extraData,
 }: EntityModalProps) {
+  const initializedFormRef = useRef<{ type: EntityModalProps['type']; entityId: unknown } | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const [formData, setFormData] = useState<any>({});
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  // Initialize form state when initialData or type changes
+
+  const historyScope = String(type || 'record').replace(/^(add|edit)_/, '');
+  const getHistoryKey = (fieldName: string) => 'navand_field_history:' + historyScope + ':' + fieldName;
+
+  const readFieldHistory = (fieldName: string): string[] => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(getHistoryKey(fieldName)) || '[]');
+      return Array.isArray(stored) ? stored.slice(0, 5).map(String) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const handleHistoryTap = (event: React.PointerEvent<HTMLFormElement>) => {
+    const control = event.target;
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement) || !control.name || control.value || control.disabled || control.readOnly) return;
+    const previous = readFieldHistory(control.name)[0];
+    if (!previous) return;
+    const numeric = control.inputMode === 'decimal' || control.type === 'number';
+    setFormData((current: any) => ({ ...current, [control.name]: numeric ? Number(previous) : previous }));
+    window.setTimeout(() => { control.focus(); control.select(); }, 0);
+  };
+
   useEffect(() => {
+    if (!isOpen) return;
+    formRef.current?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input[name], textarea[name]').forEach((control) => {
+      const previous = readFieldHistory(control.name)[0];
+      control.placeholder = previous ? (['joinDate', 'hireDate', 'paymentDate', 'date'].includes(control.name) ? formatDisplayDate(previous) : previous) : '';
+    });
+  }, [isOpen, type, formData]);
+
+  const saveFieldHistory = (data: Record<string, unknown>) => {
+    Object.entries(data).forEach(([fieldName, value]) => {
+      if (
+        value === null ||
+        value === undefined ||
+        value === '' ||
+        typeof value === 'boolean' ||
+        ['id', 'password', 'currentPassword'].includes(fieldName)
+      ) {
+        return;
+      }
+
+      const nextValue = String(value).trim();
+      if (!nextValue) return;
+      const history = readFieldHistory(fieldName);
+      const nextHistory = [nextValue, ...history.filter((item) => item !== nextValue)].slice(0, 5);
+      localStorage.setItem(getHistoryKey(fieldName), JSON.stringify(nextHistory));
+    });
+  };
+  // Initialize once per open form; background refreshes must preserve the draft.
+  useEffect(() => {
+    if (!isOpen) {
+      initializedFormRef.current = null;
+      return;
+    }
+    const entityId = initialData?.id ?? null;
+    const initialized = initializedFormRef.current;
+    if (initialized?.type === type && initialized.entityId === entityId) return;
+    initializedFormRef.current = { type, entityId };
     if (isOpen) {
       setError(null);
       if (initialData) {
-        setFormData({ ...initialData });
+        const editableData = { ...initialData };
+        ['joinDate', 'hireDate', 'paymentDate', 'date', 'lastPaymentDate', 'nextPaymentDate'].forEach((fieldName) => {
+          if (editableData[fieldName]) editableData[fieldName] = toDateInputValue(editableData[fieldName]);
+        });
+        setFormData(editableData);
       } else {
         // Feed defaults for addition modal
         const defaults: Record<string, any> = {
-          add_student: { firstName: '', lastName: '', fatherName: '', phone: '', courseId: extraData.courses[0]?.id || '', joinDate: '1405/03/18', feePaid: 0, isActive: true },
-          add_teacher: { firstName: '', lastName: '', specialty: '', phone: '', salary: 0, hireDate: '1405/03/18', isActive: true },
+          add_student: { firstName: '', lastName: '', fatherName: '', phone: '', courseId: extraData.courses[0]?.id || '', joinDate: getTodayDateInputValue(), feePaid: 0, isActive: true },
+          add_teacher: { firstName: '', lastName: '', specialty: '', phone: '', salary: 0, hireDate: getTodayDateInputValue(), isActive: true },
           add_course: { name: '', teacherId: extraData.teachers[0]?.id || '', duration: '۳ ماه', monthlyFee: 1500000, level: 'متوسط' },
-          add_payment: { studentId: extraData.students[0]?.id || '', month: 'خرداد ۱۴۰۵', totalAmount: 0, paidAmount: 0, paymentDate: '1405/03/18', status: 'completed' },
-          add_expense: { title: '', category: 'سایر موارد', amount: 0, date: '1405/03/18', paidTo: '', description: '' },
-          add_income: { title: '', source: 'سایر موارد', amount: 0, date: '1405/03/18', description: '' },
-          add_exam: { title: '', courseId: extraData.courses[0]?.id || '', date: '1405/03/18', totalScore: 100 },
+          add_payment: { studentId: extraData.students[0]?.id || '', month: getCurrentAfghanMonth(), totalAmount: 0, paidAmount: 0, remainingAmount: 0, paymentDate: getTodayDateInputValue(), status: 'completed' },
+          add_expense: { title: '', category: 'سایر موارد', amount: 0, date: getTodayDateInputValue(), paidTo: '', description: '' },
+          add_income: { title: '', source: 'سایر موارد', amount: 0, date: getTodayDateInputValue(), description: '' },
+          add_exam: { title: '', courseId: extraData.courses[0]?.id || '', date: getTodayDateInputValue(), totalScore: 100, studentCount: 0 },
           add_result: { studentId: extraData.students[0]?.id || '', examId: extraData.exams[0]?.id || '', score: 0, grade: 'خوب', description: '' },
         };
         setFormData(defaults[type || ''] || {});
       }
     }
   }, [isOpen, type, initialData, extraData]);
+
+
+  useEffect(() => {
+    if (!isOpen || !type) return;
+    const frameId = window.requestAnimationFrame(() => {
+      formRef.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus();
+    });
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !formRef.current) return;
+      const focusable = Array.from(formRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])')) as HTMLElement[];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, type]);
 
   if (!isOpen || !type) return null;
 
@@ -81,6 +178,7 @@ export function EntityModal({
           studentId,
           totalAmount: course.monthlyFee,
           paidAmount: course.monthlyFee,
+          remainingAmount: 0,
         }));
       } else {
         setFormData((prev: any) => ({ ...prev, studentId }));
@@ -91,9 +189,18 @@ export function EntityModal({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type: elemType } = e.target;
     let finalVal: any = value;
+    const numericFields = new Set([
+      'feePaid', 'salary', 'monthlyFee', 'totalAmount', 'paidAmount',
+      'remainingAmount', 'amount', 'studentCount', 'totalScore', 'score',
+    ]);
 
-    if (elemType === 'number') {
-      finalVal = value === '' ? 0 : Number(value);
+    if (elemType === 'number' || numericFields.has(name)) {
+      const normalizedNumber = value
+        .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - '۰'.charCodeAt(0)))
+        .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - '٠'.charCodeAt(0)))
+        .replace(/[,،\s]/g, '');
+      finalVal = normalizedNumber === '' ? 0 : Number(normalizedNumber);
+      if (!Number.isFinite(finalVal)) return;
     } else if (name === 'isActive') {
       finalVal = value === 'true';
     }
@@ -107,8 +214,8 @@ export function EntityModal({
 
     // Dynamic validations
     if (type.includes('student')) {
-      if (!formData.firstName?.trim() || !formData.lastName?.trim() || !formData.phone?.trim()) {
-        setError('لطفاً فیلدهای ستاره‌دار (نام، نام خانوادگی، شماره دور و تماس) را تکمیل کنید!');
+      if (!formData.firstName?.trim() || Number(formData.feePaid) < 0) {
+        setError('نام شاگرد الزامی است و مبلغ پرداختی نباید منفی باشد.');
         return;
       }
     } else if (type.includes('teacher')) {
@@ -123,7 +230,7 @@ export function EntityModal({
       }
     } else if (type.includes('payment')) {
       if (!formData.studentId || formData.paidAmount < 0) {
-        setError('انتخاب دانش‌آموز الزامی است و مبلغ نباید منفی باشد.');
+        setError('انتخاب دانشجو الزامی است و مبلغ نباید منفی باشد.');
         return;
       }
     } else if (type.includes('expense') || type.includes('income')) {
@@ -132,8 +239,12 @@ export function EntityModal({
         return;
       }
     } else if (type.includes('exam')) {
-      if (!formData.title?.trim() || formData.totalScore <= 0) {
-        setError('تکمیل لوح عنوان آزمون و کل نمره الزامی است.');
+      if (!formData.courseId) {
+        setError('لطفاً یک دوره را برای آزمون انتخاب کنید.');
+        return;
+      }
+      if (!formData.date?.trim() || Number(formData.studentCount) < 0) {
+        setError('\u062a\u0627\u0631\u06cc\u062e \u0622\u0632\u0645\u0648\u0646 \u0648 \u062a\u0639\u062f\u0627\u062f \u062f\u0627\u0646\u0634\u062c\u0648\u06cc\u0627\u0646 \u0627\u0645\u062a\u062d\u0627\u0646\u200c\u062f\u0647\u0646\u062f\u0647 \u0631\u0627 \u062f\u0631\u0633\u062a \u0648\u0627\u0631\u062f \u06a9\u0646\u06cc\u062f.');
         return;
       }
     } else if (type.includes('result')) {
@@ -143,14 +254,27 @@ export function EntityModal({
       }
     }
 
-    onSave(formData);
+    const submittedData = type.includes('payment')
+      ? {
+          ...formData,
+          remainingAmount: Math.max(Number(formData.totalAmount || 0) - Number(formData.paidAmount || 0), 0),
+          status:
+            Number(formData.paidAmount || 0) <= 0
+              ? 'unpaid'
+              : Number(formData.paidAmount || 0) >= Number(formData.totalAmount || 0)
+                ? 'completed'
+                : 'partial',
+        }
+      : formData;
+    saveFieldHistory(submittedData);
+    onSave(submittedData);
   };
 
   // Determine modal header text
   const getTitle = () => {
     switch (type) {
-      case 'add_student': return 'افزودن دانش‌آموز جدید';
-      case 'edit_student': return 'ویرایش اطلاعات دانش‌آموز';
+      case 'add_student': return 'افزودن دانشجو جدید';
+      case 'edit_student': return 'ویرایش اطلاعات دانشجو';
       case 'add_teacher': return 'افزودن آموزگار جدید';
       case 'edit_teacher': return 'ویرایش اطلاعات آموزگار';
       case 'add_course': return 'افزودن دوره آموزشی جدید';
@@ -158,37 +282,45 @@ export function EntityModal({
       case 'add_payment': return 'ثبت رسید پرداخت جدید';
       case 'edit_payment': return 'ویرایش رسید پرداخت';
       case 'add_expense': return 'ثبت هزینه جدید علمی/اداری';
+      case 'edit_expense': return 'ویرایش مصرف/هزینه';
       case 'add_income': return 'ثبت درآمد جدید متفرقه';
+      case 'edit_income': return 'ویرایش درآمد';
       case 'add_exam': return 'ثبت آزمون و تست جدید';
-      case 'add_result': return 'ثبت نمره دانش‌آموز';
+      case 'add_result': return 'ثبت نمره دانشجو';
       default: return 'فرم اطلاعات';
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col animate-scale-up text-right">
+    <div className="entity-modal-overlay fixed inset-0 flex items-center justify-center z-50 p-4">
+      <div className="entity-modal-card bg-white w-full overflow-hidden max-h-[90vh] flex flex-col animate-scale-up text-right" role="dialog" aria-modal="true" aria-labelledby="entity-modal-title">
         {/* Header */}
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <div className="entity-modal-header p-4 border-b border-slate-100 flex justify-between items-center">
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
+            className="icon-button p-1 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition" aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>
-          <h3 className="font-extrabold text-slate-800 text-sm sm:text-base">{getTitle()}</h3>
+          <h3 id="entity-modal-title" className="font-extrabold text-slate-800 text-sm sm:text-base">{getTitle()}</h3>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-grow text-xs sm:text-sm">
+        <form ref={formRef} onSubmit={handleSubmit} onPointerDownCapture={handleHistoryTap} className="entity-record-form p-6 overflow-y-auto space-y-4 flex-grow text-xs sm:text-sm">
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-center gap-2 border border-red-150 animate-shake">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <p className="font-semibold">{error}</p>
+            <div className="entity-alert-overlay" role="alertdialog" aria-modal="true">
+              <div className="entity-alert-card">
+                <div className="entity-alert-icon">
+                  <AlertCircle />
+                </div>
+                <h4>لطفاً معلومات را بررسی کنید</h4>
+                <p>{error}</p>
+                <button type="button" onClick={() => setError(null)}>متوجه شدم</button>
+              </div>
             </div>
           )}
 
-          {/* DYNAMIC FIELD FIELDS */}
+{/* DYNAMIC FIELD FIELDS */}
           
           {/* STUDENT FORM */}
           {type.includes('student') && (
@@ -206,7 +338,7 @@ export function EntityModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1.5 text-right">تخلص (نام خانوادگی) *</label>
+                  <label className="block text-slate-600 font-bold mb-1.5 text-right">تخلص (نام خانوادگی) — اختیاری</label>
                   <input
                     type="text"
                     name="lastName"
@@ -231,7 +363,7 @@ export function EntityModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1.5 text-right">شماره تماس *</label>
+                  <label className="block text-slate-600 font-bold mb-1.5 text-right">شماره تماس — اختیاری</label>
                   <input
                     type="text"
                     name="phone"
@@ -259,30 +391,33 @@ export function EntityModal({
                 </div>
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">تاریخ ثبت‌نام</label>
-                  <input
-                    type="text"
+                  <JalaliDateInput
                     name="joinDate"
                     value={formData.joinDate || ''}
-                    onChange={handleInputChange}
+                    onChange={(value) => setFormData((previous: any) => ({ ...previous, joinDate: value }))}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                     placeholder="1405/03/18"
                   />
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 gap-4">
+                <label className="text-sm font-bold text-slate-600">فیس ماهانه (افغانی)<input type="text" inputMode="decimal" name="monthlyFee" value={formData.monthlyFee || ''} onChange={handleInputChange} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2" /></label>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1.5 text-right">مبلغ شهریه پرداختی (افغانی)</label>
+                  <label className="block text-slate-600 font-bold mb-1.5 text-right">مبلغ شهریه پرداختی (افغانی) *</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     name="feePaid"
-                    value={formData.feePaid ?? 0}
+                    value={formData.feePaid || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1.5 text-right">وضعیت دانش‌آموز</label>
+                  <label className="block text-slate-600 font-bold mb-1.5 text-right">وضعیت دانشجو</label>
                   <select
                     name="isActive"
                     value={formData.isActive === false ? 'false' : 'true'}
@@ -341,9 +476,10 @@ export function EntityModal({
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">حقوق ماهانه (افغانی)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     name="salary"
-                    value={formData.salary ?? 0}
+                    value={formData.salary || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
@@ -364,11 +500,10 @@ export function EntityModal({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">تاریخ استخدام</label>
-                  <input
-                    type="text"
+                  <JalaliDateInput
                     name="hireDate"
                     value={formData.hireDate || ''}
-                    onChange={handleInputChange}
+                    onChange={(value) => setFormData((previous: any) => ({ ...previous, hireDate: value }))}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                     placeholder="1405/01/01"
                   />
@@ -406,7 +541,7 @@ export function EntityModal({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1.5 text-right">انتخاب مدرس دوره</label>
+                  <label className="block text-slate-600 font-bold mb-1.5 text-right">انتخاب استاد دوره</label>
                   <select
                     name="teacherId"
                     value={formData.teacherId || ''}
@@ -435,9 +570,10 @@ export function EntityModal({
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">شهریه ماهانه (افغانی)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     name="monthlyFee"
-                    value={formData.monthlyFee ?? 0}
+                    value={formData.monthlyFee || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
@@ -463,7 +599,7 @@ export function EntityModal({
           {type.includes('payment') && (
             <div className="space-y-4">
               <div>
-                <label className="block text-slate-600 font-bold mb-1.5 text-right">انتخاب هنرجو (دانش‌آموز) *</label>
+                <label className="block text-slate-600 font-bold mb-1.5 text-right">انتخاب دانشجو *</label>
                 <select
                   name="studentId"
                   value={formData.studentId || ''}
@@ -486,16 +622,15 @@ export function EntityModal({
                     value={formData.month || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right"
-                    placeholder="مثال: خرداد ۱۴۰۵"
+                    placeholder="مثال: جوزا ۱۴۰۵"
                   />
                 </div>
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">تاریخ پرداخت</label>
-                  <input
-                    type="text"
+                  <JalaliDateInput
                     name="paymentDate"
                     value={formData.paymentDate || ''}
-                    onChange={handleInputChange}
+                    onChange={(value) => setFormData((previous: any) => ({ ...previous, paymentDate: value }))}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                     placeholder="1405/03/18"
                   />
@@ -506,19 +641,21 @@ export function EntityModal({
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">کل مبلغ شهریه (افغانی)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     name="totalAmount"
-                    value={formData.totalAmount ?? 0}
+                    value={formData.totalAmount || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1.5 text-right">مبلغ پرداختی هنرجو (افغانی)</label>
+                  <label className="block text-slate-600 font-bold mb-1.5 text-right">مبلغ پرداختی دانشجو (افغانی)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     name="paidAmount"
-                    value={formData.paidAmount ?? 0}
+                    value={formData.paidAmount || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
@@ -575,9 +712,10 @@ export function EntityModal({
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">مبلغ هزینه (افغانی) *</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     name="amount"
-                    value={formData.amount ?? 0}
+                    value={formData.amount || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
@@ -587,11 +725,10 @@ export function EntityModal({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">تاریخ مصرف</label>
-                  <input
-                    type="text"
+                  <JalaliDateInput
                     name="date"
                     value={formData.date || ''}
-                    onChange={handleInputChange}
+                    onChange={(value) => setFormData((previous: any) => ({ ...previous, date: value }))}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
                 </div>
@@ -652,9 +789,10 @@ export function EntityModal({
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">مبلغ دریافتی (افغانی) *</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     name="amount"
-                    value={formData.amount ?? 0}
+                    value={formData.amount || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
@@ -663,11 +801,10 @@ export function EntityModal({
 
               <div>
                 <label className="block text-slate-600 font-bold mb-1.5 text-right">تاریخ دریافت</label>
-                <input
-                  type="text"
+                <JalaliDateInput
                   name="date"
                   value={formData.date || ''}
-                  onChange={handleInputChange}
+                  onChange={(value) => setFormData((previous: any) => ({ ...previous, date: value }))}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                 />
               </div>
@@ -690,48 +827,38 @@ export function EntityModal({
           {type.includes('exam') && (
             <div className="space-y-4">
               <div>
-                <label className="block text-slate-600 font-bold mb-1.5 text-right">نام آزمون / پروژه جدید *</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right"
-                  placeholder="مثال: امتحان میان‌ترم علوم کامپیوتر"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-bold mb-1.5 text-right">کلاس / دوره مربوطه</label>
+                <label className="block text-slate-600 font-bold mb-1.5 text-right">{'\u0627\u0646\u062a\u062e\u0627\u0628 \u062f\u0648\u0631\u0647 *'}</label>
                 <select
                   name="courseId"
                   value={formData.courseId || ''}
                   onChange={handleInputChange}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right"
                 >
-                  {extraData.courses.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                  <option value="">{'\u06cc\u06a9 \u062f\u0648\u0631\u0647 \u0631\u0627 \u0627\u0646\u062a\u062e\u0627\u0628 \u06a9\u0646\u06cc\u062f'}</option>
+                  {extraData.courses.map((course) => (
+                    <option key={course.id} value={course.id}>{course.name}</option>
                   ))}
                 </select>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1.5 text-right">کل نمره (بارم)</label>
-                  <input
-                    type="number"
-                    name="totalScore"
-                    value={formData.totalScore ?? 100}
-                    onChange={handleInputChange}
+                  <label className="block text-slate-600 font-bold mb-1.5 text-right">{'\u062a\u0627\u0631\u06cc\u062e \u0622\u0632\u0645\u0648\u0646 *'}</label>
+                  <JalaliDateInput
+                    name="date"
+                    value={formData.date || ''}
+                    onChange={(value) => setFormData((previous: any) => ({ ...previous, date: value }))}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
+                    placeholder="1405/03/18"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-bold mb-1.5 text-right">تاریخ آزمون</label>
+                  <label className="block text-slate-600 font-bold mb-1.5 text-right">{'\u062a\u0639\u062f\u0627\u062f \u062f\u0627\u0646\u0634\u062c\u0648\u06cc\u0627\u0646 \u0627\u0645\u062a\u062d\u0627\u0646\u200c\u062f\u0647\u0646\u062f\u0647 *'}</label>
                   <input
                     type="text"
-                    name="date"
-                    value={formData.date || ''}
+                    inputMode="numeric"
+                    min="0"
+                    name="studentCount"
+                    value={formData.studentCount || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
@@ -744,7 +871,7 @@ export function EntityModal({
           {type.includes('result') && (
             <div className="space-y-4">
               <div>
-                <label className="block text-slate-600 font-bold mb-1.5 text-right">دانش‌آموز (هنرجو)</label>
+                <label className="block text-slate-600 font-bold mb-1.5 text-right">دانشجو</label>
                 <select
                   name="studentId"
                   value={formData.studentId || ''}
@@ -775,10 +902,10 @@ export function EntityModal({
                 <div>
                   <label className="block text-slate-600 font-bold mb-1.5 text-right">نمره مکتسبه</label>
                   <input
-                    type="number"
-                    step="any"
+                    type="text"
+                    inputMode="decimal"
                     name="score"
-                    value={formData.score ?? 0}
+                    value={formData.score || ''}
                     onChange={handleInputChange}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition text-right font-mono"
                   />
@@ -813,11 +940,12 @@ export function EntityModal({
             </div>
           )}
 
+
           {/* Dialog Action Buttons */}
-          <div className="flex gap-2.5 pt-5 border-t border-slate-100 flex-row-reverse justify-start">
+          <div className="entity-modal-actions flex gap-2.5 pt-5 border-t border-slate-100 flex-row-reverse justify-start">
             <button
               type="submit"
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-lg shadow-blue-600/10 transition-colors duration-150 cursor-pointer"
+              className="entity-modal-save px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl transition-colors duration-150 cursor-pointer"
               id="btn-save-modal"
             >
               ذخیره و ثبت اطلاعات
@@ -825,7 +953,7 @@ export function EntityModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors duration-150 cursor-pointer"
+              className="entity-modal-cancel px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors duration-150 cursor-pointer"
               id="btn-cancel-modal"
             >
               انصراف
@@ -833,6 +961,7 @@ export function EntityModal({
           </div>
         </form>
       </div>
+
     </div>
   );
 }

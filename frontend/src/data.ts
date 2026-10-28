@@ -181,7 +181,7 @@ export const INITIAL_PAYMENTS: Payment[] = [
   {
     id: 'PAY-1001',
     studentId: 'S-301',
-    month: 'خرداد ۱۴۰۵',
+    month: 'جوزا ۱۴۰۵',
     totalAmount: 1800000,
     paidAmount: 1800000,
     remainingAmount: 0,
@@ -191,7 +191,7 @@ export const INITIAL_PAYMENTS: Payment[] = [
   {
     id: 'PAY-1002',
     studentId: 'S-302',
-    month: 'خرداد ۱۴۰۵',
+    month: 'جوزا ۱۴۰۵',
     totalAmount: 3200000,
     paidAmount: 3200000,
     remainingAmount: 0,
@@ -201,7 +201,7 @@ export const INITIAL_PAYMENTS: Payment[] = [
   {
     id: 'PAY-1003',
     studentId: 'S-303',
-    month: 'خرداد ۱۴۰۵',
+    month: 'جوزا ۱۴۰۵',
     totalAmount: 1800000,
     paidAmount: 1200000,
     remainingAmount: 600000,
@@ -211,7 +211,7 @@ export const INITIAL_PAYMENTS: Payment[] = [
   {
     id: 'PAY-1004',
     studentId: 'S-304',
-    month: 'خرداد ۱۴۰۵',
+    month: 'جوزا ۱۴۰۵',
     totalAmount: 2500000,
     paidAmount: 0,
     remainingAmount: 2500000,
@@ -221,7 +221,7 @@ export const INITIAL_PAYMENTS: Payment[] = [
   {
     id: 'PAY-1005',
     studentId: 'S-305',
-    month: 'خرداد ۱۴۰۵',
+    month: 'جوزا ۱۴۰۵',
     totalAmount: 2000000,
     paidAmount: 2000000,
     remainingAmount: 0,
@@ -231,7 +231,7 @@ export const INITIAL_PAYMENTS: Payment[] = [
   {
     id: 'PAY-1006',
     studentId: 'S-306',
-    month: 'خرداد ۱۴۰۵',
+    month: 'جوزا ۱۴۰۵',
     totalAmount: 3000000,
     paidAmount: 3000000,
     remainingAmount: 0,
@@ -241,7 +241,7 @@ export const INITIAL_PAYMENTS: Payment[] = [
   {
     id: 'PAY-1007',
     studentId: 'S-308',
-    month: 'خرداد ۱۴۰۵',
+    month: 'جوزا ۱۴۰۵',
     totalAmount: 2500000,
     paidAmount: 2500000,
     remainingAmount: 0,
@@ -262,7 +262,7 @@ export const INITIAL_EXPENSES: Expense[] = [
   },
   {
     id: 'EXP-402',
-    title: 'اجاره‌بهای خرداد ماه ساختمان کلاس‌ها',
+    title: 'اجاره‌بهای جوزا ماه ساختمان کلاس‌ها',
     category: 'اجاره و آبونمان',
     amount: 15000000,
     date: '1405/03/05',
@@ -276,7 +276,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     amount: 1800000,
     date: '1405/03/10',
     paidTo: 'سازمان توزیع نیرو برق',
-    description: 'قبض مصرفی دوره اردیبهشت-خرداد',
+    description: 'قبض مصرفی دوره ثور-جوزا',
   },
   {
     id: 'EXP-404',
@@ -285,7 +285,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     amount: 4200000,
     date: '1405/03/12',
     paidTo: 'چاپخانه بهاران',
-    description: 'تبلیغ ترم تابستانه آکادمی ناوند دسکتاپ',
+    description: 'تبلیغ دوره تابستانی آکادمی ناوند دسکتاپ',
   },
 ];
 
@@ -311,10 +311,11 @@ export const INITIAL_INCOMES: Income[] = [
 export const INITIAL_EXAMS: Exam[] = [
   {
     id: 'EXM-601',
-    title: 'آزمون میان‌ترم پایتون مقدماتی',
+    title: 'آزمون میان‌دوره پایتون مقدماتی',
     courseId: 'C-201',
     date: '1405/03/10',
     totalScore: 100,
+    studentCount: 2,
   },
   {
     id: 'EXM-602',
@@ -322,6 +323,7 @@ export const INITIAL_EXAMS: Exam[] = [
     courseId: 'C-202',
     date: '1405/03/15',
     totalScore: 20,
+    studentCount: 1,
   },
   {
     id: 'EXM-603',
@@ -329,6 +331,7 @@ export const INITIAL_EXAMS: Exam[] = [
     courseId: 'C-203',
     date: '1405/03/08',
     totalScore: 15,
+    studentCount: 2,
   },
 ];
 
@@ -338,7 +341,7 @@ export const INITIAL_RESULTS: ExamResult[] = [
     studentId: 'S-301',
     examId: 'EXM-601',
     score: 92,
-    grade: 'عالی',
+    grade: 'A',
     description: 'عملکرد فوق‌العاده در بخش برنامه‌نویسی شی‌گرا',
   },
   {
@@ -346,7 +349,7 @@ export const INITIAL_RESULTS: ExamResult[] = [
     studentId: 'S-303',
     examId: 'EXM-601',
     score: 75,
-    grade: 'خوب',
+    grade: 'B',
     description: 'نیازمند تمرین بیشتر در بخش ساختار داده‌ها',
   },
   {
@@ -354,7 +357,7 @@ export const INITIAL_RESULTS: ExamResult[] = [
     studentId: 'S-302',
     examId: 'EXM-602',
     score: 19.5,
-    grade: 'عالی',
+    grade: 'D',
     description: 'طراحی عالی کامپوننت‌ها و پیاده‌سازی کامل API',
   },
   {
@@ -362,7 +365,7 @@ export const INITIAL_RESULTS: ExamResult[] = [
     studentId: 'S-304',
     examId: 'EXM-603',
     score: 14,
-    grade: 'عالی',
+    grade: 'D',
     description: 'درک فوق‌العاده مفاهیم منطق گراف',
   },
   {
@@ -370,7 +373,7 @@ export const INITIAL_RESULTS: ExamResult[] = [
     studentId: 'S-308',
     examId: 'EXM-603',
     score: 11,
-    grade: 'خوب',
+    grade: 'D',
     description: 'پاسخ جزئی در سؤال تشریحی ترکیبیات',
   },
 ];

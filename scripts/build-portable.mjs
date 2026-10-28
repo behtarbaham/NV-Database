@@ -8,7 +8,8 @@ const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const releaseDir = path.join(root, 'release');
-const portableDir = path.join(releaseDir, 'Navand Course Manager-win32-x64');
+const appPackage = require(path.join(root, 'package.json'));
+const portableDir = path.join(releaseDir, `Navand Course Manager-${appPackage.version}-win32-x64`);
 const appDir = path.join(portableDir, 'resources', 'app');
 
 const copy = (from, to) => {

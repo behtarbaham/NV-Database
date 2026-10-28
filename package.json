@@ -1,7 +1,7 @@
 {
   "name": "navand-course-manager",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.3.7",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -25,6 +25,7 @@
   "build": {
     "appId": "com.navand.coursemanager",
     "productName": "Navand Course Manager",
+    "artifactName": "${productName} Setup ${version}.${ext}",
     "directories": {
       "output": "release"
     },
@@ -44,6 +45,7 @@
     ],
     "npmRebuild": false,
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -59,7 +61,12 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Navand Course Manager"
+      "shortcutName": "Navand Course Manager",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "electronFuses": {
+      "runAsNode": false
     }
   },
   "dependencies": {
@@ -70,6 +77,7 @@
     "better-sqlite3": "^12.2.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "react": "^19.0.1",
